@@ -1,3 +1,6 @@
+# THIS WHOLE PROJECT WAS PROBABLY MADE WITH HORRIBLE HORRIBLE CODING PRACTICES
+# I AM AN IDIOT
+# PLEASE CONSIDER NOT USING THIS CODE ANYWHERE ELSE
 import argparse, json, os, time, posixpath, logging
 from termcolor import cprint
 from urllib.parse import urlparse
