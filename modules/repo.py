@@ -2,7 +2,7 @@ import posixpath, requests, re, gzip, bz2, shutil, plistlib
 import lzma as xz
 from debian_inspector import debcon 
 from modules.helper import format_url
-from modules.download import download, get_headers
+from modules.download import download
 
 class DebianRepo:
     def __init__(self, url, suites=None, components=None, auth={}, authjson=''):
@@ -112,8 +112,13 @@ class DebianRepo:
                 break
             except:
                 continue
-        packages_content = list(debcon.get_paragraphs_data_from_file('./Packages'))    
-        return packages_content
+        try:
+            packages_content = list(debcon.get_paragraphs_data_from_file('./Packages'))  
+            return packages_content
+        except UnicodeDecodeError:
+            with open('./Packages', 'r', errors='ignore', encoding='latin-1') as file:
+                packages_content = file.read()
+                return list(debcon.get_paragraphs_data(packages_content))
 
 class InstallerRepo:
     def __init__(self, url):

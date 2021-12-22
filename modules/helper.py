@@ -22,6 +22,9 @@ def format_url(url):
 
 def dos2unix(file):
     with open(os.path.abspath(file),'rw') as filec:
-        content = filec.read().splitlines()
+        content = filec.readlines()
         for line in content:
             filec.write(line + b'\n')
+
+    
+
