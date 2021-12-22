@@ -14,7 +14,7 @@ def repo_download(repo, args):
         if package['package'] in unpurchased_packages:
             continue
         if download_link is None:
-            logger.warning(f"Couldn't download {package['package']}")
+            logger.warning(f"({index+1}/{package_count}) Couldn't download {package['package']}")
             unpurchased_packages.append(package['package'])
             continue
         if not args.original_names:
@@ -53,9 +53,6 @@ if __name__ == "__main__":
         help="""Only change the filename when necessary (invalid characters etc)
                 Default is to change filenames to PACKAGE-VERSION.ext""")
     oneshot.add_argument('-v', '--verbose', action="store_const", dest="loglevel", const=logging.INFO, default=logging.WARNING, help='be verbose')
-    repotype.add_argument('-a', '--apt', '-c', '--cydia', action='store_true', 
-        help="""Specify the repo as an APT/Cydia repo.
-                This is not needed if you are archiving a dist repo, or if you have provided an authentication file.""")
     repotype.add_argument('-i', '--installer', action='store_true', help='Specify the repo as an Installer repo')
 
     input_file = subparser.add_parser('sources', help="""Archive all repos inside a Deb822-formatted repo list (such as sileo.sources)""")
@@ -79,16 +76,15 @@ if __name__ == "__main__":
 
     match args.command:
         case 'oneshot':
-            args.apt = args.apt or bool(len(args.url) >= 2 or args.auth) # Auto specify apt repo if there is a suite or an authentication file is provided
-            args.url = [args.url[0], './'] if len(args.url) == 1 else args.url
-            if args.apt:
+            if args.installer:
+                repo = InstallerRepo(args.url[0])
+            else:
+                args.url = [args.url[0], './'] if len(args.url) == 1 else args.url
                 if args.auth and os.path.isfile(args.auth):
                     with open(args.auth, 'r') as file:
                         repo = DebianRepo(args.url[0], suites=args.url[1], auth=json.load(file))
                 else:
                     repo = DebianRepo(args.url[0], suites=args.url[1])
-            elif args.installer:
-                repo = InstallerRepo(args.url[0])
             repo_download(repo, args)
         case 'sources':
             args.apt = True
