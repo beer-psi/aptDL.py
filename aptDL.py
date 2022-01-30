@@ -73,38 +73,40 @@ if __name__ == "__main__":
     input_file.add_argument('-v', '--verbose', action="store_const", dest="loglevel", const=logging.INFO, default=logging.WARNING, help='be verbose')
 
     args = parser.parse_args()
-    
-    logging.basicConfig(level=args.loglevel, format="%(asctime)s - %(levelname)s - %(message)s")
+
+    logging.basicConfig(level=args.loglevel if hasattr(args, "loglevel") else logging.WARNING, format="%(asctime)s - %(levelname)s - %(message)s")
     logger = logging.getLogger(__name__)
 
-    match args.command:
-        case 'oneshot':
-            if args.installer:
-                repo = InstallerRepo(args.url[0])
+    if args.command == 'oneshot':
+        if args.installer:
+            repo = InstallerRepo(args.url[0])
+        else:
+            args.url = [args.url[0], './'] if len(args.url) == 1 else args.url
+            if args.auth and os.path.isfile(args.auth):
+                with open(args.auth, 'r') as file:
+                    repo = DebianRepo(args.url[0], suites=args.url[1], auth=json.load(file))
             else:
-                args.url = [args.url[0], './'] if len(args.url) == 1 else args.url
-                if args.auth and os.path.isfile(args.auth):
-                    with open(args.auth, 'r') as file:
-                        repo = DebianRepo(args.url[0], suites=args.url[1], auth=json.load(file))
-                else:
-                    repo = DebianRepo(args.url[0], suites=args.url[1])
+                repo = DebianRepo(args.url[0], suites=args.url[1])
+        repo_download(repo, args)
+    elif args.command == 'sources':
+        args.apt = True
+        sources_list = list()
+        output_dir = args.output
+        for sources_filename in args.sources:
+            sources_list += list(debcon.get_paragraphs_data_from_file(sources_filename))
+        for source in sources_list:
+            cprint(f"Downloading from {source['uris']} {source['suites']}", 'blue')
+            repo_netloc = urlparse(source['uris']).netloc
+            auth = None
+            authfile = posixpath.join(args.auth, f"{repo_netloc}.json")
+            logger.debug(f"Looking for authentication data in {authfile}")
+            if os.path.isfile(authfile):
+                logger.info(f"Using authentication data from {authfile}")
+                with open(authfile, 'r') as file:
+                    auth=json.load(file)
+            repo = DebianRepo(source['uris'], suites=source['suites'], auth=(auth if auth else None))
+            args.output = os.path.abspath(posixpath.join(output_dir, repo_netloc, source['suites']))
             repo_download(repo, args)
-        case 'sources':
-            args.apt = True
-            sources_list = list()
-            output_dir = args.output
-            for sources_filename in args.sources:
-                sources_list += list(debcon.get_paragraphs_data_from_file(sources_filename))
-            for source in sources_list:
-                cprint(f"Downloading from {source['uris']} {source['suites']}", 'blue')
-                repo_netloc = urlparse(source['uris']).netloc
-                auth = None
-                authfile = posixpath.join(args.auth, f"{repo_netloc}.json")
-                logger.debug(f"Looking for authentication data in {authfile}")
-                if os.path.isfile(authfile):
-                    logger.info(f"Using authentication data from {authfile}")
-                    with open(authfile, 'r') as file:
-                        auth=json.load(file)
-                repo = DebianRepo(source['uris'], suites=source['suites'], auth=(auth if auth else None))
-                args.output = os.path.abspath(posixpath.join(output_dir, repo_netloc, source['suites']))
-                repo_download(repo, args)
+    else:
+        parser.print_help()
+        exit(1)
